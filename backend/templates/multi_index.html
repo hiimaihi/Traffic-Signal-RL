@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Signal RL — 多路口走廊</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- ═══════════════ 导航栏 ═══════════════ -->
+    <nav class="navbar glass">
+        <div class="nav-left">
+            <svg class="nav-icon" width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect x="2" y="2" width="10" height="10" rx="2" fill="#34C759"/>
+                <rect x="16" y="2" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="2" y="16" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="16" y="16" width="10" height="10" rx="2" fill="#34C759"/>
+            </svg>
+            <span class="nav-title">TrafficRL <span class="nav-subtitle">1×2 走廊</span></span>
+        </div>
+        <!-- 模式切换 -->
+        <div class="nav-modes">
+            <a href="/" class="mode-btn">🚦 单路口</a>
+            <a href="/multi" class="mode-btn active">🔗 1×2 走廊</a>
+            <a href="/grid" class="mode-btn">🗺 2×2 网格</a>
+        </div>
+        <div class="nav-center">
+            <span class="nav-badge" id="navEpisode">Episode 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navStep">Step 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navAgent">Dueling DQN</span>
+        </div>
+        <div class="nav-right">
+            <span class="nav-status" id="navStatus">⏸ 就绪</span>
+        </div>
+    </nav>
+
+    <!-- ═══════════════ 主布局 ═══════════════ -->
+    <main class="cockpit multi-cockpit">
+
+        <!-- 左侧: 仿真画布 (两路口并排) -->
+        <section class="canvas-panel glass-card multi-canvas-panel">
+            <div class="panel-header">
+                <h2>1×2 走廊仿真</h2>
+                <div class="phase-indicators">
+                    <span class="phase-indicator phase-i0" id="phaseI0">NS</span>
+                    <span class="phase-sep">—</span>
+                    <span class="phase-indicator phase-i1" id="phaseI1">NS</span>
+                </div>
+            </div>
+            <div class="canvas-wrapper multi-canvas-wrapper">
+                <canvas id="simCanvas" width="800" height="420"></canvas>
+            </div>
+        </section>
+
+        <!-- 右侧: 数据面板 -->
+        <aside class="side-panel">
+
+            <!-- 指标卡片 -->
+            <div class="metrics-grid multi-metrics">
+                <div class="metric-card glass-card">
+                    <span class="metric-label">累计奖励</span>
+                    <span class="metric-value mono" id="metricReward">0.0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I0 吞吐</span>
+                    <span class="metric-value mono" id="metricTp0">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I1 吞吐</span>
+                    <span class="metric-value mono" id="metricTp1">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">传输中</span>
+                    <span class="metric-value mono" id="metricPipeline">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I0 动作</span>
+                    <span class="metric-value" id="metricAction0">HOLD</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I1 动作</span>
+                    <span class="metric-value" id="metricAction1">HOLD</span>
+                </div>
+            </div>
+
+            <!-- 两路口排队面板 -->
+            <div class="glass-card queue-panel multi-queue">
+                <div class="panel-header"><h3>I0 — 排队</h3></div>
+                <div class="queue-grid">
+                    <div class="queue-item"><span class="queue-dir">北 ↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar0N"></div></div><span class="queue-num" id="qNum0N">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">南 ↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar0S"></div></div><span class="queue-num" id="qNum0S">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">东 →</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar0E"></div></div><span class="queue-num" id="qNum0E">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">西 ←</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar0W"></div></div><span class="queue-num" id="qNum0W">0</span></div>
+                </div>
+            </div>
+
+            <div class="glass-card queue-panel multi-queue">
+                <div class="panel-header"><h3>I1 — 排队</h3></div>
+                <div class="queue-grid">
+                    <div class="queue-item"><span class="queue-dir">北 ↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar1N"></div></div><span class="queue-num" id="qNum1N">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">南 ↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar1S"></div></div><span class="queue-num" id="qNum1S">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">东 →</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar1E"></div></div><span class="queue-num" id="qNum1E">0</span></div>
+                    <div class="queue-item"><span class="queue-dir">西 ←</span><div class="queue-bar-wrap"><div class="queue-bar" id="qBar1W"></div></div><span class="queue-num" id="qNum1W">0</span></div>
+                </div>
+            </div>
+
+            <!-- 决策置信度 -->
+            <div class="glass-card q-panel" id="qPanel">
+                <div class="panel-header"><h3>决策置信度</h3></div>
+                <div class="q-bars">
+                    <div class="q-row">
+                        <span class="q-label">I0 HOLD</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-hold" id="mqBar0H"></div></div>
+                        <span class="q-num mono" id="mqNum0H">0.50</span>
+                    </div>
+                    <div class="q-row">
+                        <span class="q-label">I0 SWITCH</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-switch" id="mqBar0Sw"></div></div>
+                        <span class="q-num mono" id="mqNum0Sw">0.50</span>
+                    </div>
+                    <div class="q-row">
+                        <span class="q-label">I1 HOLD</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-hold" id="mqBar1H"></div></div>
+                        <span class="q-num mono" id="mqNum1H">0.50</span>
+                    </div>
+                    <div class="q-row">
+                        <span class="q-label">I1 SWITCH</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-switch" id="mqBar1Sw"></div></div>
+                        <span class="q-num mono" id="mqNum1Sw">0.50</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ═══════════════ 底部控制栏 ═══════════════ -->
+    <footer class="control-bar glass">
+        <div class="control-group">
+            <label>Agent</label>
+            <select id="selectAgent">
+                <optgroup label="DQN 系列">
+                    <option value="dqn">DQN</option>
+                    <option value="double">Double DQN</option>
+                    <option value="dueling" selected>Dueling DQN</option>
+                    <option value="noisy">Noisy DQN</option>
+                    <option value="noisy_double">Noisy Double</option>
+                    <option value="boltzmann">Boltzmann DQN</option>
+                    <option value="boltzmann_double">Boltzmann Double</option>
+                    <option value="per_dqn">PER DQN</option>
+                    <option value="dueling_per">Dueling PER</option>
+                </optgroup>
+                <optgroup label="PG 系列">
+                    <option value="a2c">A2C</option>
+                    <option value="ppo">PPO</option>
+                </optgroup>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>交通模式</label>
+            <select id="selectPattern">
+                <option value="uniform">均匀流</option>
+                <option value="peak_hour">高峰时段</option>
+                <option value="tidal">潮汐流</option>
+                <option value="burst">突发流</option>
+                <option value="low_traffic" selected>低流量</option>
+            </select>
+        </div>
+        <div class="control-group control-actions">
+            <button class="btn btn-primary" id="btnInit">🔄 初始化</button>
+            <button class="btn btn-secondary" id="btnStep">⏭ 单步</button>
+            <button class="btn btn-play" id="btnPlay">▶ 播放</button>
+            <button class="btn btn-pause" id="btnPause" disabled>⏸ 暂停</button>
+            <button class="btn btn-reset" id="btnReset">↺ 重置</button>
+        </div>
+        <div class="control-group control-speed">
+            <label>速度: <span id="speedLabel">1×</span></label>
+            <input type="range" id="speedSlider" min="0.5" max="8" step="0.5" value="1">
+            <div class="speed-presets">
+                <span data-speed="0.5">½×</span>
+                <span data-speed="1">1×</span>
+                <span data-speed="2">2×</span>
+                <span data-speed="4">4×</span>
+                <span data-speed="8">8×</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/multi_canvas.js?v=1"></script>
+    <script src="/static/js/multi_panels.js?v=1"></script>
+    <script src="/static/js/multi_controls.js?v=1"></script>
+    <script src="/static/js/multi_app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\caption{算法对比实验结果（单路口，均匀交通流，3种子$\times$100ep$\times$300步）}
+\label{tab:algorithm_comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{算法} & \textbf{Reward} & \textbf{Queue} & \textbf{Wait} & \textbf{Throughput} \\
+\midrule
+DQN        & $-100{,}860 \pm 717$ & $332.7 \pm 2.4$ & $41.4$ & $1769$ \\
+Double DQN & $-99{,}096 \pm 577$  & $326.9 \pm 1.9$ & $40.8$ & $1780$ \\
+Dueling DQN& $-97{,}758 \pm 1386$ & $322.3 \pm 4.6$ & $40.2$ & $1780$ \\
+Noisy DQN  & $-98{,}699 \pm 853$  & $325.5 \pm 2.8$ & $40.7$ & $1771$ \\
+Boltzmann DQN & $-97{,}271 \pm 1149$ & $320.8 \pm 3.8$ & $40.2$ & $1773$ \\
+PER DQN    & $-99{,}004 \pm 720$  & $326.6 \pm 2.4$ & $40.7$ & $1767$ \\
+A2C        & $-98{,}982 \pm 1197$ & $326.4 \pm 4.0$ & $40.7$ & $1778$ \\
+\textbf{PPO} & $\mathbf{-96{,}374 \pm 766}$ & $\mathbf{317.8 \pm 2.5}$ & $\mathbf{39.8}$ & $\mathbf{1786}$ \\
+\midrule
+PPO vs DQN  & $\uparrow 4.45\%$ & $\downarrow 4.48\%$ & $\downarrow 3.86\%$ & $\uparrow 0.96\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}

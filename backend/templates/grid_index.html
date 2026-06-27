@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Signal RL — 2×2 网格路口</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* 2×2 网格额外样式 */
+        .grid-cockpit { display: flex; gap: 16px; padding: 16px; height: calc(100vh - 140px); }
+        .grid-canvas-panel { flex: 0 0 auto; }
+        .grid-canvas-panel canvas { display: block; border-radius: 12px; }
+        .grid-side { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-width: 280px; }
+        .grid-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .grid-metrics .metric-card { padding: 10px; }
+        .grid-metrics .metric-value { font-size: 15px; }
+        .grid-metrics .metric-label { font-size: 10px; }
+        .intersection-row { display: flex; gap: 10px; }
+        .inter-card { flex: 1; padding: 12px; }
+        .inter-card h4 { font-size: 13px; margin: 0 0 8px 0; color: var(--accent); }
+        .inter-card .queue-grid { gap: 4px; }
+        .inter-card .queue-item { font-size: 12px; }
+        .inter-card .queue-dir { width: 28px; font-size: 11px; }
+        .inter-card .queue-num { font-size: 12px; width: 24px; }
+        .grid-q-panel .q-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
+        .grid-q-panel .q-row { font-size: 12px; }
+        .grid-q-panel .q-label { width: 65px; font-size: 11px; }
+        .grid-q-panel .q-num { font-size: 12px; width: 40px; }
+        .grid-q-panel .q-bar-wrap { height: 10px; }
+        .grid-q-panel .q-bar { height: 10px; }
+        @media (max-width: 960px) {
+            .grid-cockpit { flex-direction: column; height: auto; }
+            .grid-metrics { grid-template-columns: repeat(4, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════ 导航栏 ═══════════════ -->
+    <nav class="navbar glass">
+        <div class="nav-left">
+            <svg class="nav-icon" width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect x="2" y="2" width="10" height="10" rx="2" fill="#34C759"/>
+                <rect x="16" y="2" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="2" y="16" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="16" y="16" width="10" height="10" rx="2" fill="#34C759"/>
+            </svg>
+            <span class="nav-title">TrafficRL <span class="nav-subtitle">2×2 网格</span></span>
+        </div>
+        <div class="nav-modes">
+            <a href="/" class="mode-btn">🚦 单路口</a>
+            <a href="/multi" class="mode-btn">🔗 1×2 走廊</a>
+            <a href="/grid" class="mode-btn active">🗺 2×2 网格</a>
+        </div>
+        <div class="nav-center">
+            <span class="nav-badge" id="navEpisode">Episode 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navStep">Step 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navAgent">Dueling DQN</span>
+        </div>
+        <div class="nav-right">
+            <span class="nav-status" id="navStatus">⏸ 就绪</span>
+        </div>
+    </nav>
+
+    <!-- ═══════════════ 主布局 ═══════════════ -->
+    <main class="cockpit grid-cockpit">
+
+        <!-- 左侧: 2×2 仿真画布 -->
+        <section class="canvas-panel glass-card grid-canvas-panel">
+            <div class="panel-header">
+                <h2>2×2 网格仿真</h2>
+                <div class="phase-indicators">
+                    <span class="phase-indicator phase-i0" id="phaseI0">NS</span>
+                    <span class="phase-sep">·</span>
+                    <span class="phase-indicator phase-i1" id="phaseI1">NS</span>
+                    <span class="phase-sep">·</span>
+                    <span class="phase-indicator phase-i2" id="phaseI2">NS</span>
+                    <span class="phase-sep">·</span>
+                    <span class="phase-indicator phase-i3" id="phaseI3">NS</span>
+                </div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas" width="800" height="640"></canvas>
+            </div>
+        </section>
+
+        <!-- 右侧: 数据面板 -->
+        <aside class="grid-side">
+
+            <!-- 全局指标 -->
+            <div class="metrics-grid grid-metrics">
+                <div class="metric-card glass-card">
+                    <span class="metric-label">累计奖励</span>
+                    <span class="metric-value mono" id="metricReward">0.0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">吞吐 I0</span>
+                    <span class="metric-value mono" id="metricTp0">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">吞吐 I1</span>
+                    <span class="metric-value mono" id="metricTp1">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">吞吐 I2</span>
+                    <span class="metric-value mono" id="metricTp2">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">吞吐 I3</span>
+                    <span class="metric-value mono" id="metricTp3">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">传输中</span>
+                    <span class="metric-value mono" id="metricPipeline">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I0 动作</span>
+                    <span class="metric-value" id="metricAction0">HOLD</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">I1 动作</span>
+                    <span class="metric-value" id="metricAction1">HOLD</span>
+                </div>
+            </div>
+
+            <!-- 上排: I0 + I1 排队 -->
+            <div class="intersection-row">
+                <div class="glass-card queue-panel inter-card">
+                    <h4>I0 (西北)</h4>
+                    <div class="queue-grid">
+                        <div class="queue-item"><span class="queue-dir">北↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar0N"></div></div><span class="queue-num" id="gqNum0N">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">南↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar0S"></div></div><span class="queue-num" id="gqNum0S">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">东→</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar0E"></div></div><span class="queue-num" id="gqNum0E">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">西←</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar0W"></div></div><span class="queue-num" id="gqNum0W">0</span></div>
+                    </div>
+                </div>
+                <div class="glass-card queue-panel inter-card">
+                    <h4>I1 (东北)</h4>
+                    <div class="queue-grid">
+                        <div class="queue-item"><span class="queue-dir">北↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar1N"></div></div><span class="queue-num" id="gqNum1N">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">南↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar1S"></div></div><span class="queue-num" id="gqNum1S">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">东→</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar1E"></div></div><span class="queue-num" id="gqNum1E">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">西←</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar1W"></div></div><span class="queue-num" id="gqNum1W">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 下排: I2 + I3 排队 -->
+            <div class="intersection-row">
+                <div class="glass-card queue-panel inter-card">
+                    <h4>I2 (西南)</h4>
+                    <div class="queue-grid">
+                        <div class="queue-item"><span class="queue-dir">北↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar2N"></div></div><span class="queue-num" id="gqNum2N">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">南↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar2S"></div></div><span class="queue-num" id="gqNum2S">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">东→</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar2E"></div></div><span class="queue-num" id="gqNum2E">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">西←</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar2W"></div></div><span class="queue-num" id="gqNum2W">0</span></div>
+                    </div>
+                </div>
+                <div class="glass-card queue-panel inter-card">
+                    <h4>I3 (东南)</h4>
+                    <div class="queue-grid">
+                        <div class="queue-item"><span class="queue-dir">北↑</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar3N"></div></div><span class="queue-num" id="gqNum3N">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">南↓</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar3S"></div></div><span class="queue-num" id="gqNum3S">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">东→</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar3E"></div></div><span class="queue-num" id="gqNum3E">0</span></div>
+                        <div class="queue-item"><span class="queue-dir">西←</span><div class="queue-bar-wrap"><div class="queue-bar" id="gqBar3W"></div></div><span class="queue-num" id="gqNum3W">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 决策置信度 (紧凑网格) -->
+            <div class="glass-card q-panel grid-q-panel" id="qPanel">
+                <div class="panel-header"><h3>决策置信度</h3></div>
+                <div class="q-bars">
+                    <div class="q-row"><span class="q-label">I0 HOLD</span><div class="q-bar-wrap"><div class="q-bar q-hold" id="gBar0H"></div></div><span class="q-num mono" id="gNum0H">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I0 SWITCH</span><div class="q-bar-wrap"><div class="q-bar q-switch" id="gBar0Sw"></div></div><span class="q-num mono" id="gNum0Sw">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I1 HOLD</span><div class="q-bar-wrap"><div class="q-bar q-hold" id="gBar1H"></div></div><span class="q-num mono" id="gNum1H">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I1 SWITCH</span><div class="q-bar-wrap"><div class="q-bar q-switch" id="gBar1Sw"></div></div><span class="q-num mono" id="gNum1Sw">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I2 HOLD</span><div class="q-bar-wrap"><div class="q-bar q-hold" id="gBar2H"></div></div><span class="q-num mono" id="gNum2H">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I2 SWITCH</span><div class="q-bar-wrap"><div class="q-bar q-switch" id="gBar2Sw"></div></div><span class="q-num mono" id="gNum2Sw">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I3 HOLD</span><div class="q-bar-wrap"><div class="q-bar q-hold" id="gBar3H"></div></div><span class="q-num mono" id="gNum3H">50.0%</span></div>
+                    <div class="q-row"><span class="q-label">I3 SWITCH</span><div class="q-bar-wrap"><div class="q-bar q-switch" id="gBar3Sw"></div></div><span class="q-num mono" id="gNum3Sw">50.0%</span></div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ═══════════════ 底部控制栏 ═══════════════ -->
+    <footer class="control-bar glass">
+        <div class="control-group">
+            <label>Agent</label>
+            <select id="selectAgent">
+                <optgroup label="DQN 系列">
+                    <option value="dqn">DQN</option>
+                    <option value="double">Double DQN</option>
+                    <option value="dueling" selected>Dueling DQN</option>
+                    <option value="noisy">Noisy DQN</option>
+                    <option value="noisy_double">Noisy Double</option>
+                    <option value="boltzmann">Boltzmann DQN</option>
+                    <option value="boltzmann_double">Boltzmann Double</option>
+                    <option value="per">PER DQN</option>
+                    <option value="dueling_per">Dueling PER</option>
+                </optgroup>
+                <optgroup label="Policy Gradient">
+                    <option value="a2c">A2C</option>
+                    <option value="ppo">PPO</option>
+                </optgroup>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>交通模式</label>
+            <select id="selectPattern">
+                <option value="uniform">均匀流</option>
+                <option value="peak_hour">高峰时段</option>
+                <option value="tidal">潮汐流</option>
+                <option value="burst">突发流</option>
+                <option value="low_traffic" selected>低流量</option>
+            </select>
+        </div>
+        <div class="control-btn-group">
+            <button id="btnInit" class="ctrl-btn ctrl-btn-primary">🔄 初始化</button>
+            <button id="btnStep" class="ctrl-btn">⏭ 单步</button>
+            <button id="btnPlay" class="ctrl-btn ctrl-btn-play">▶ 播放</button>
+            <button id="btnPause" class="ctrl-btn" disabled>⏸ 暂停</button>
+            <button id="btnReset" class="ctrl-btn">↺ 重置</button>
+        </div>
+        <div class="control-group speed-group">
+            <label>速度: <span id="speedLabel">1×</span></label>
+            <input type="range" id="speedSlider" min="1" max="5" value="1" step="1">
+            <span class="speed-ticks">
+                <span data-speed="0.5">½×</span><span data-speed="1">1×</span>
+                <span data-speed="2">2×</span><span data-speed="4">4×</span><span data-speed="8">8×</span>
+            </span>
+        </div>
+    </footer>
+
+    <script src="/static/js/grid_canvas.js?v=1"></script>
+    <script src="/static/js/grid_panels.js?v=1"></script>
+    <script src="/static/js/grid_controls.js?v=1"></script>
+    <script src="/static/js/grid_app.js?v=1"></script>
+</body>
+</html>

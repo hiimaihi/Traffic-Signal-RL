@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Signal RL — 智能信号灯决策模拟</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- ═══════════════ 导航栏 ═══════════════ -->
+    <nav class="navbar glass">
+        <div class="nav-left">
+            <svg class="nav-icon" width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect x="2" y="2" width="10" height="10" rx="2" fill="#34C759"/>
+                <rect x="16" y="2" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="2" y="16" width="10" height="10" rx="2" fill="#FF3B30"/>
+                <rect x="16" y="16" width="10" height="10" rx="2" fill="#34C759"/>
+            </svg>
+            <span class="nav-title">TrafficRL <span class="nav-subtitle">Cockpit</span></span>
+        </div>
+        <!-- 模式切换 -->
+        <div class="nav-modes">
+            <a href="/" class="mode-btn active">🚦 单路口</a>
+            <a href="/multi" class="mode-btn">🔗 1×2 走廊</a>
+            <a href="/grid" class="mode-btn">🗺 2×2 网格</a>
+        </div>
+        <div class="nav-center">
+            <span class="nav-badge" id="navEpisode">Episode 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navStep">Step 0</span>
+            <span class="nav-sep">·</span>
+            <span class="nav-badge" id="navAgent">Dueling DQN</span>
+        </div>
+        <div class="nav-right">
+            <span class="nav-status" id="navStatus">⏸ 就绪</span>
+        </div>
+    </nav>
+
+    <!-- ═══════════════ 主布局 ═══════════════ -->
+    <main class="cockpit">
+
+        <!-- 左侧: 仿真画布 -->
+        <section class="canvas-panel glass-card">
+            <div class="panel-header">
+                <h2>路口仿真</h2>
+                <span class="phase-indicator" id="phaseIndicator">NS</span>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas" width="720" height="720"></canvas>
+            </div>
+        </section>
+
+        <!-- 右侧: 数据面板 -->
+        <aside class="side-panel">
+
+            <!-- 指标卡片网格 -->
+            <div class="metrics-grid">
+                <div class="metric-card glass-card">
+                    <span class="metric-label">累计奖励</span>
+                    <span class="metric-value mono" id="metricReward">0.0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">吞吐量</span>
+                    <span class="metric-value mono" id="metricThroughput">0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">平均等待(步)</span>
+                    <span class="metric-value mono" id="metricWait">0.0</span>
+                </div>
+                <div class="metric-card glass-card">
+                    <span class="metric-label">当前动作</span>
+                    <span class="metric-value" id="metricAction">HOLD</span>
+                </div>
+                <div class="metric-card glass-card" id="cardPenalty">
+                    <span class="metric-label">切换惩罚(累计)</span>
+                    <span class="metric-value mono" id="metricPenalty">0</span>
+                </div>
+            </div>
+
+            <!-- 排队/到达率 -->
+            <div class="glass-card queue-panel" id="queuePanel">
+                <div class="panel-header"><h3>各方向排队</h3></div>
+                <div class="queue-grid">
+                    <div class="queue-item" data-dir="N">
+                        <span class="queue-dir">北 ↑</span>
+                        <div class="queue-bar-wrap"><div class="queue-bar" id="queueBarN"></div></div>
+                        <span class="queue-num" id="queueNumN">0</span>
+                    </div>
+                    <div class="queue-item" data-dir="S">
+                        <span class="queue-dir">南 ↓</span>
+                        <div class="queue-bar-wrap"><div class="queue-bar" id="queueBarS"></div></div>
+                        <span class="queue-num" id="queueNumS">0</span>
+                    </div>
+                    <div class="queue-item" data-dir="E">
+                        <span class="queue-dir">东 →</span>
+                        <div class="queue-bar-wrap"><div class="queue-bar" id="queueBarE"></div></div>
+                        <span class="queue-num" id="queueNumE">0</span>
+                    </div>
+                    <div class="queue-item" data-dir="W">
+                        <span class="queue-dir">西 ←</span>
+                        <div class="queue-bar-wrap"><div class="queue-bar" id="queueBarW"></div></div>
+                        <span class="queue-num" id="queueNumW">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q 值 / 策略条形图 -->
+            <div class="glass-card q-panel" id="qPanel">
+                <div class="panel-header"><h3>决策置信度</h3></div>
+                <div class="q-bars">
+                    <div class="q-row">
+                        <span class="q-label">HOLD</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-hold" id="qBarHold"></div></div>
+                        <span class="q-num mono" id="qNumHold">0.50</span>
+                    </div>
+                    <div class="q-row">
+                        <span class="q-label">SWITCH</span>
+                        <div class="q-bar-wrap"><div class="q-bar q-switch" id="qBarSwitch"></div></div>
+                        <span class="q-num mono" id="qNumSwitch">0.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 算法对比 -->
+            <div class="glass-card compare-panel" id="comparePanel">
+                <div class="panel-header">
+                    <h3>📊 算法对比</h3>
+                    <button class="btn btn-compare" id="btnCompare">▶ 运行对比</button>
+                </div>
+                <div class="compare-results" id="compareResults">
+                    <span class="compare-placeholder">点击「运行对比」在低流量模式下评测所有算法</span>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ═══════════════ 底部控制栏 ═══════════════ -->
+    <footer class="control-bar glass">
+        <!-- 配置区 -->
+        <div class="control-group">
+            <label>Agent</label>
+            <select id="selectAgent">
+                <optgroup label="DQN 系列">
+                    <option value="dqn">DQN</option>
+                    <option value="double">Double DQN</option>
+                    <option value="dueling" selected>Dueling DQN</option>
+                    <option value="noisy">Noisy DQN</option>
+                    <option value="noisy_double">Noisy Double</option>
+                    <option value="boltzmann">Boltzmann DQN</option>
+                    <option value="boltzmann_double">Boltzmann Double</option>
+                    <option value="per_dqn">PER DQN</option>
+                    <option value="dueling_per">Dueling PER</option>
+                </optgroup>
+                <optgroup label="PG 系列">
+                    <option value="a2c">A2C</option>
+                    <option value="ppo">PPO</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>交通模式</label>
+            <select id="selectPattern">
+                <option value="uniform">均匀流</option>
+                <option value="peak_hour">高峰时段</option>
+                <option value="tidal">潮汐流</option>
+                <option value="burst">突发流</option>
+                <option value="low_traffic" selected>低流量</option>
+            </select>
+        </div>
+
+        <!-- 操作按钮组 -->
+        <div class="control-group control-buttons">
+            <button class="btn btn-primary" id="btnInit">🔄 初始化</button>
+            <button class="btn btn-outline" id="btnStep">⏭ 单步</button>
+            <button class="btn btn-play" id="btnPlay">▶ 播放</button>
+            <button class="btn btn-outline" id="btnPause" disabled>⏸ 暂停</button>
+            <button class="btn btn-outline" id="btnReset">↺ 重置</button>
+        </div>
+
+        <!-- 速度控制 -->
+        <div class="control-group control-speed">
+            <label>速度: <span id="speedLabel">1×</span></label>
+            <input type="range" id="speedRange" min="0.25" max="8" step="0.25" value="1">
+            <div class="speed-presets">
+                <span data-speed="0.5">½×</span>
+                <span data-speed="1" class="active">1×</span>
+                <span data-speed="2">2×</span>
+                <span data-speed="4">4×</span>
+                <span data-speed="8">8×</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════════ JavaScript ═══════════════ -->
+    <script src="/static/js/canvas.js?v=5"></script>
+    <script src="/static/js/panels.js?v=5"></script>
+    <script src="/static/js/controls.js?v=5"></script>
+    <script src="/static/js/app.js?v=5"></script>
+</body>
+</html>
