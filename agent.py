@@ -1,20 +1,6 @@
-"""
-交通信号灯自适应控制 — 强化学习算法核心逻辑
-==============================================
-实现:
+"""DQN 系列 Agent 实现：DQN、Double、Dueling、Noisy、Boltzmann、PER 及组合变体。
 
-  - ReplayBuffer:              经验回放池 (均匀随机采样)
-  - PrioritizedReplayBuffer:   优先经验回放 (SumTree, PER)
-  - SumTree:                   线段树数据结构 (O(log N) 采样/更新)
-  - DQNAgent:                  标准 DQN (Vanilla DQN)
-  - DoubleDQNAgent:            Double DQN (解耦动作选择与价值评估)
-  - DuelingDQNAgent:           Dueling DQN (V/A 分离架构 + Double DQN 更新)
-  - NoisyDQNAgent:             NoisyNet 探索 (自学习噪声)
-  - BoltzmannDQNAgent:         Boltzmann/softmax 探索 (温度衰减)
-  - PERDQNAgent:               优先经验回放 DQN
-  - DuelingPERDQNAgent:        Dueling + Double + PER (最强组合)
-
-所有 Agent 统一接口: select_action() / store_transition() / update() / update_target()
+统一接口: select_action / store_transition / update / update_target。
 """
 
 import numpy as np

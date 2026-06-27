@@ -1,17 +1,4 @@
-"""
-交通信号灯自适应控制 — 神经网络结构定义
-==========================================
-实现 DQN 系列算法的 Q 网络架构:
-
-  - StandardDQN:  标准全连接 Q 网络
-  - DuelingDQN:   对偶网络 (Value + Advantage 分流)
-  - NoisyDQN:     NoisyNet 噪声探索网络
-  - ShallowDQN:   浅层网络 (消融用, 1×FC(32))
-  - DeepDQN:      深层网络 (消融用, 4×FC(256))
-  - NoisyLinear:  可学习高斯噪声线性层 (Factorised)
-
-Double DQN 使用 StandardDQN 架构, 算法差异在 Agent 层。
-"""
+"""Q 网络架构：标准 DQN、Dueling、NoisyNet 及消融变体。"""
 
 import torch
 import torch.nn as nn

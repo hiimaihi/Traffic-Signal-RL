@@ -1,21 +1,7 @@
 """
-交通信号灯自适应控制 — 实验框架
-=================================
-6 类消融/对比实验, 含统计检验。
+实验框架：算法对比、网络消融、状态消融、奖励消融、超参敏感性和交通鲁棒性实验。
 
-实验类型:
-  1. AlgorithmComparison       — 6 算法 × 5 seeds 对比
-  2. NetworkAblation           — 4 网络架构 × 5 seeds 消融
-  3. StateRepresentationAblation — 3 状态变体 × 5 seeds
-  4. RewardFunctionAblation    — 4 奖励函数 × 5 seeds
-  5. HyperparameterSensitivity — 3 超参 × 4 values × 5 seeds
-  6. TrafficRobustness         — 4 模式 × 2 算法 × 5 seeds
-
-统计检验:
-  - 配对 t 检验 (最佳 vs 次佳)
-  - 95% 置信区间 (CI)
-  - LaTeX 表格自动生成
-  - 效应量 (Cohen's d)
+含统计检验：配对 t 检验、95% 置信区间、Cohen's d、LaTeX 表格生成。
 """
 
 import numpy as np

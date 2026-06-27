@@ -1,12 +1,7 @@
 """
-2×2 网格路口 — 模型训练脚本
-============================
-训练 4 个独立 Agent (每个路口一个), 共享同一种算法。
-由于每路口只吃 8 维局部观测, 可复用单路口模型架构。
+2×2 网格多路口训练脚本。
 
-用法:
-  python grid_train.py --agent dueling --pattern uniform --episodes 300 --seeds 3
-  python grid_train.py --agent dqn --pattern all --episodes 200 --seeds 2
+用法: python grid_train.py --agent dueling --pattern uniform --episodes 300 --seeds 3
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

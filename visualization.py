@@ -1,15 +1,7 @@
 """
-交通信号灯自适应控制 — 学术级可视化模块
-========================================
-6 大类可视化, 适配硕士/博士论文发表标准:
-  (a) training_dashboard     — 4 面板训练曲线摘要
-  (b) q_value_heatmap        — Q 值决策边界热力图
-  (c) phase_decision_timeline— 相位决策时间线 (3 面板)
-  (d) radar_chart            — 6 维雷达图算法对比
-  (e) multi_seed_ribbon      — 多种子均值±95% CI 包络线
-  (f) summary_grand_figure   — 综合大图 (2×3 面板)
+训练曲线和算法对比的可视化模块。
 
-输出: 300 DPI, 中文字体支持, 学术风格配色。
+输出 300 DPI，中文字体支持。
 """
 
 import numpy as np

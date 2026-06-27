@@ -1,19 +1,7 @@
 """
-交通信号灯自适应控制 — 主入口 & 命令行接口
-============================================
-统一 CLI, 调度实验、可视化全流程。
+命令行入口，调度训练、实验和可视化。
 
-用法:
-  python main.py                        # 默认: DuelingDQN × 5 seeds 快速训练+可视化
-  python main.py --full                 # 完整实验: 6 类消融实验
-  python main.py --ablation network     # 单一消融实验
-  python main.py --dashboard            # 仅训练+仪表盘
-  python main.py --agent dueling --episodes 300 --seeds 3
-  python main.py --train-only           # 仅训练, 不生成图表
-  python main.py --output ./my_results  # 自定义输出目录
-
-支持的 --agent: dqn | double | dueling | noisy | boltzmann | per_dqn | dueling_per
-支持的 --ablation: algorithm | network | state | reward | hyperparam | traffic
+用法: python main.py [--agent AGENT] [--episodes N] [--ablation TYPE] [--dashboard]
 """
 
 import argparse

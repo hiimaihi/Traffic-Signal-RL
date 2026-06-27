@@ -1,4 +1,4 @@
-"""快速集成验证脚本 — 验证所有模块和功能"""
+"""集成验证脚本。"""
 
 import numpy as np
 import os

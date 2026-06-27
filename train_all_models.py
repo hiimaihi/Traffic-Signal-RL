@@ -1,16 +1,5 @@
 #!/usr/bin/env python
-"""
-批量训练所有 RL Agent × 交通模式组合, 保存模型供前端驾驶舱加载。
-===================================================================
-用法:
-  python train_all_models.py                  # 训练全部模型 (跳过已有)
-  python train_all_models.py --force           # 覆盖已有模型
-  python train_all_models.py --dry-run         # 仅列出将训练的模型
-
-输出:
-  results/models/{agent}_{pattern}.pt          # 每个组合一个模型文件
-  results/train_all_report.json                # 训练报告
-"""
+"""批量训练脚本，产出 results/models/ 下的模型文件。"""
 
 import argparse
 import json

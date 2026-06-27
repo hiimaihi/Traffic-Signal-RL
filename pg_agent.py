@@ -1,15 +1,6 @@
-"""
-交通信号灯自适应控制 — Policy Gradient 算法族
-================================================
-实现:
-  - A2CAgent:    Advantage Actor-Critic (n-step TD + entropy bonus)
-  - PPOAgent:    Proximal Policy Optimization (clip + value clipping)
+"""Policy Gradient 算法：A2C 和 PPO。
 
-统一接口: select_action() / store_transition() / update() (在 episode 结束时调用)
-与 DQN 系列 Agent 的关键区别:
-  - 在线学习 (on-policy): 每个 episode 收集 rollout → 计算 returns → 一次/多次梯度更新
-  - 输出 Categorical 分布 (离散动作)
-  - 使用 Actor-Critic 架构 (Actor=策略网络, Critic=价值网络)
+On-policy，episode 结束时更新。Actor-Critic 架构。
 """
 
 import numpy as np
