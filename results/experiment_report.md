@@ -3,7 +3,8 @@
 > **实验日期**: 2026-06-27  
 > **环境**: 单路口 4 方向交通信号灯 (8 维状态 × 2 动作)  
 > **实验配置**: 3 种子 × 100 episodes × 300 步, 均匀交通流 (arrival_rate=2.0)  
-> **总训练时间**: 2.0 小时 (7195s)
+> **总训练时间**: 2.0 小时 (7195s)  
+> **GitHub**: [https://github.com/hiimaihi/Traffic-Signal-RL](https://github.com/hiimaihi/Traffic-Signal-RL)
 
 ---
 
